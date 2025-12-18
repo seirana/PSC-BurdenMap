@@ -6,14 +6,20 @@
 3) Apply PCA to reduce dimensionality and denoise the burden space.
 4) Run k-means clustering in PCA space and pick k using the silhouette score.
 5) Export plots + tables to interpret clusters and gene drivers (PCA loadings).
+   
 ---
+
 ## Project question
 Do individuals (PSC patients vs controls) show natural structure in gene-level variant-burden space, and which genes drive the dominant variance axes?
+
 ---
+
 ## Input data
 - `data/burden_matrix.csv`: rows are individuals, columns are genes, values are burden (0/1, counts, or weighted scores).
 - `data/labels.csv` (optional): `sample_id,label` where label ∈ {PSC, Control}.
+- 
 ---
+
 ## Reto structure
 ```text
 PSC-BurdenMap/
@@ -26,7 +32,9 @@ PSC-BurdenMap/
 │  └─ labels.csv                
 └─ artifacts/
 ```
+
 ---
+
 ## Data file formats
 data/burden_matrix.csv
 
@@ -35,7 +43,9 @@ first column: sample_id
 all other columns: genes (e.g., ENSG or symbols)
 
 values: numeric burden (0/1, counts, or weighted)
+
 ---
+
 ## Run
 ```bash
 python -m venv .venv
