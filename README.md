@@ -6,7 +6,7 @@
 3) Apply PCA to reduce dimensionality and denoise the burden space.
 4) Run k-means clustering in PCA space and pick k using the silhouette score.
 5) Export plots + tables to interpret clusters and gene drivers (PCA loadings).
- ---
+---
 ## Project question
 Do individuals (PSC patients vs controls) show natural structure in gene-level variant-burden space, and which genes drive the dominant variance axes?
 ---
