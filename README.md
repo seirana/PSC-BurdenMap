@@ -1,5 +1,7 @@
 # PSC-BurdenMap: PCA + k-means Clustering of Gene-Level Variant Burden
 
+---
+
 ## How it works (5 lines)
 1) Load a sample × gene variant-burden matrix (PSC + controls).
 2) Standardize features (and optionally log-transform burdens).
@@ -17,7 +19,7 @@ Do individuals (PSC patients vs controls) show natural structure in gene-level v
 ## Input data
 - `data/burden_matrix.csv`: rows are individuals, columns are genes, values are burden (0/1, counts, or weighted scores).
 - `data/labels.csv` (optional): `sample_id,label` where label ∈ {PSC, Control}.
-- 
+
 ---
 
 ## Reto structure
