@@ -2,7 +2,7 @@
 
 ---
 
-## How it works (5 lines)
+## How it works
 1) Load a sample × gene variant-burden matrix (PSC + controls).
 2) Standardize features (and optionally log-transform burdens).
 3) Apply PCA to reduce dimensionality and denoise the burden space.
