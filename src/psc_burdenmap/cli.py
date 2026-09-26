@@ -172,12 +172,16 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--var-thresh",
+        "--var_thresh",
+        dest="var_thresh",
         type=float,
         default=0.0,
         help="Drop genes with variance <= this threshold after optional log1p.",
     )
     parser.add_argument(
         "--pca-var",
+        "--pca_var",
+        dest="pca_var",
         type=float,
         default=0.90,
         help="Keep enough PCs to reach this cumulative explained variance.",
@@ -187,12 +191,16 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument(
         "--stability-runs",
+        "--stability_runs",
+        dest="stability_runs",
         type=int,
         default=10,
         help="Repeat k-means with different seeds for each candidate k.",
     )
     parser.add_argument(
         "--n-init",
+        "--n_init",
+        dest="n_init",
         type=int,
         default=20,
         help="KMeans n_init for each stability run.",
