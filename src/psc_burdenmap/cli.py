@@ -242,7 +242,7 @@ def main() -> int:
     )
 
     pca_full = PCA(svd_solver="full")
-    full_scores = pca_full.fit_transform(standardized)
+    pca_full.fit(standardized)
     max_components = min(
         standardized.shape[0],
         standardized.shape[1],
