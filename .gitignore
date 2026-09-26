@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Environments
+.venv/
+venv/
+env/
+
+# IDE / OS
+.DS_Store
+Thumbs.db
+
+# Local configuration
+.env
+.env.*
+
+# Local research data
+data/*.csv
+data/*.tsv
+data/*.parquet
+
+# Generated analysis outputs
+artifacts/

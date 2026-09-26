@@ -1,97 +1,242 @@
-# PSC-BurdenMap: PCA + k-means Clustering of Gene-Level Variant Burden
+# PSC-BurdenMap
 
----
+PSC-BurdenMap is a reproducible unsupervised analysis pipeline for exploring sample-level structure in gene-level variant-burden matrices.
 
-## How it works
-1) Load a sample × gene variant-burden matrix (PSC + controls).
-2) Standardize features (and optionally log-transform burdens).
-3) Apply PCA to reduce dimensionality and denoise the burden space.
-4) Run k-means clustering in PCA space and pick k using the silhouette score.
-5) Export plots + tables to interpret clusters and gene drivers (PCA loadings).
-   
----
+It combines:
 
-## Project question
-Do individuals (PSC patients vs controls) show natural structure in gene-level variant-burden space, and which genes drive the dominant variance axes?
+- strict burden-matrix validation;
+- optional log1p transformation;
+- variance filtering;
+- feature standardization;
+- PCA for dimensionality reduction;
+- stability-aware k-means model selection;
+- optional descriptive comparison with PSC/control labels;
+- provenance, QC, tests, CI, and Docker.
 
----
+The analysis is exploratory. PCA loadings identify genes that contribute to variance in the analyzed burden matrix; they do not establish causality. k-means clusters are mathematical partitions of the reduced feature space and are not automatically clinical subtypes.
 
-## Input data
-- `data/burden_matrix.csv`: rows are individuals, columns are genes, values are burden (0/1, counts, or weighted scores).
-- `data/labels.csv` (optional): `sample_id,label` where label ∈ {PSC, Control}.
+## Analysis question
 
----
+Given a sample × gene burden matrix:
 
-## Reto structure
+1. is there reproducible low-dimensional structure among samples;
+2. how stable is k-means clustering across random initializations;
+3. which genes contribute most strongly to the leading PCs;
+4. if labels are available, how closely do the unsupervised clusters align with those observed labels?
+
+Labels are never used to fit PCA or k-means.
+
+## Repository structure
+
 ```text
 PSC-BurdenMap/
-├─ README.md
-├─ requirements.txt
-├─ src/
-│  └─ run_pca_kmeans.py
-├─ data/
-│  ├─ burden_matrix.csv
-│  └─ labels.csv                
-└─ artifacts/
+├── src/
+│   ├── psc_burdenmap/
+│   │   ├── core.py
+│   │   └── cli.py
+│   └── run_pca_kmeans.py
+├── tests/
+├── data/
+├── .github/workflows/ci.yml
+├── Dockerfile
+├── METHODS.md
+├── pyproject.toml
+├── requirements.txt
+└── README.md
 ```
 
----
+The historical `src/run_pca_kmeans.py` entry point is retained as a thin compatibility wrapper.
 
-## Data file formats
-data/burden_matrix.csv
+## Installation
 
-first column: sample_id
-
-all other columns: genes (e.g., ENSG or symbols)
-
-values: numeric burden (0/1, counts, or weighted)
-
----
-
-## Run
 ```bash
+git clone https://github.com/seirana/PSC-BurdenMap.git
+cd PSC-BurdenMap
+
 python -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
 
-python src/run_pca_kmeans.py \
+python -m pip install --upgrade pip
+python -m pip install -e .
+```
+
+For development:
+
+```bash
+python -m pip install -e ".[dev]"
+```
+
+## Input data
+
+### Burden matrix
+
+Default:
+
+```text
+data/burden_matrix.csv
+```
+
+Format:
+
+```text
+sample_id,GeneA,GeneB,GeneC,...
+S001,0,1,0,...
+S002,2,0,1,...
+```
+
+Requirements:
+
+- `sample_id` must be present, non-empty, and unique;
+- at least two gene columns are required;
+- gene values must be numeric and finite;
+- missing or non-numeric values are rejected by default.
+
+If zero imputation is scientifically justified, enable it explicitly with `--impute-zero`. The number of imputed values is recorded in QC and metrics outputs.
+
+### Optional labels
+
+Default:
+
+```text
+data/labels.csv
+```
+
+Format:
+
+```text
+sample_id,label
+S001,PSC
+S002,Control
+```
+
+A missing labels file is treated as an unlabeled analysis. When labels are present, they are merged only after PCA/k-means fitting.
+
+See [data/README.md](data/README.md).
+
+## Run
+
+```bash
+psc-burdenmap \
   --burden data/burden_matrix.csv \
   --labels data/labels.csv \
   --outdir artifacts \
   --log1p \
-  --pca_var 0.90 \
-  --kmin 2 --kmax 8
+  --pca-var 0.90 \
+  --kmin 2 \
+  --kmax 8 \
+  --stability-runs 10 \
+  --seed 42
 ```
 
----
+The historical command remains valid:
 
+```bash
+python src/run_pca_kmeans.py ...
+```
 
-## Outputs (artifacts)
+The older underscore forms `--pca_var` and `--var_thresh` are also accepted.
 
-artifacts/pca_variance.png — cumulative explained variance (scree)
+## Model-selection behavior
 
-artifacts/pca_embedding.csv — PC coordinates per sample
+For each feasible value of `k`, the pipeline repeats k-means with several seeds.
 
-artifacts/pca_scatter_by_label.png — PC1/PC2 scatter colored by PSC/Control (if labels provided)
+It reports:
 
-artifacts/k_selection.csv — silhouette & inertia across k
+- mean and standard deviation of silhouette score;
+- mean and standard deviation of inertia;
+- mean and minimum pairwise Adjusted Rand Index (ARI) across repeated clusterings.
 
-artifacts/sample_clusters.csv — cluster assignment per sample
+The selected `k` maximizes mean silhouette, then stability ARI, with smaller `k` used as the final tie-breaker.
 
-artifacts/pca_scatter_by_cluster.png — clustering visualization
+If the requested `kmax` exceeds the silhouette-feasible maximum `n_samples - 1`, the evaluated range is clipped and recorded in `run_metrics.json`.
 
-artifacts/cluster_summary.csv — cluster sizes and (optional) PSC/control proportions
+## Outputs
 
-artifacts/top_gene_loadings.csv — top genes contributing to PC1–PC5
+Typical outputs:
 
-artifacts/run_metrics.json — run configuration + key summary numbers
+```text
+artifacts/
+├── pca_embedding.csv
+├── pca_explained_variance.csv
+├── pca_variance.png
+├── pca_scatter_by_cluster.png
+├── pca_scatter_by_label.png        # only when labels are available
+├── k_selection.csv
+├── sample_clusters.csv
+├── cluster_summary.csv
+├── top_gene_loadings.csv
+├── data_qc.json
+├── run_metrics.json
+└── run_metadata.json
+```
 
----
+`run_metadata.json` records the command arguments, Python/platform information, core package versions, Git commit when available, and SHA-256 checksums for the input files.
 
-## Interpretation notes
+## Label comparison
 
-PCA is unsupervised: labels are not used to fit PCA; they are used only for visualization/interpretation.
+When labels are available, the pipeline reports descriptive:
 
-k-means clusters reflect structure in the reduced PCA space; they are not guaranteed to correspond to clinical subtypes.
+- Adjusted Rand Index;
+- Normalized Mutual Information.
 
-Genes with high absolute loadings on PCs are drivers of variance, not automatically causal.
+These metrics describe agreement between an unsupervised clustering and observed labels. They are not classification accuracy, because labels were not used to train the model.
+
+## Testing
+
+```bash
+python -m pytest
+python -m ruff check src tests
+```
+
+Tests cover:
+
+- duplicate sample rejection;
+- strict handling of missing/non-numeric burden values;
+- explicit zero-imputation behavior;
+- log1p input validation;
+- variance-filter edge cases;
+- PCA component selection;
+- feasible k-range handling;
+- deterministic k-selection;
+- cluster/label agreement metrics;
+- end-to-end artifact creation.
+
+GitHub Actions runs the maintained package on Python 3.10, 3.11, and 3.12 and builds the Docker image.
+
+## Docker
+
+Build:
+
+```bash
+docker build -t psc-burdenmap .
+```
+
+Run:
+
+```bash
+mkdir -p artifacts
+
+docker run --rm \
+  -v "$PWD/data:/app/data:ro" \
+  -v "$PWD/artifacts:/app/artifacts" \
+  psc-burdenmap \
+  --burden /app/data/burden_matrix.csv \
+  --labels /app/data/labels.csv \
+  --outdir /app/artifacts
+```
+
+## Interpretation
+
+Appropriate interpretation:
+
+> The analyzed cohort contains an unsupervised cluster structure with the reported silhouette/stability values, and the listed genes have large PCA loadings in this dataset.
+
+Not appropriate:
+
+> The clusters are validated PSC subtypes, or high-loading genes are causal PSC genes.
+
+See [METHODS.md](METHODS.md) for statistical and interpretation details.
+
+## License
+
+No explicit license file is currently included. Repository visibility alone does not grant reuse rights.
